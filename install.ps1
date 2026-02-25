@@ -211,6 +211,18 @@ function Main {
             Write-Warn "No output-styles/ directory found — skipping"
         }
 
+        # ── 6. commands ───────────────────────────────────────────────────────
+        Write-Section "Installing commands"
+        if (Test-Path "$RepoDir\commands") {
+            $CommandsDir = Join-Path $ClaudeDir "commands"
+            New-Item -ItemType Directory -Path $CommandsDir -Force | Out-Null
+            Copy-Item "$RepoDir\commands\*" $CommandsDir -Recurse -Force
+            $Count = (Get-ChildItem "$RepoDir\commands" -Filter "*.md").Count
+            Write-Ok "Installed $Count command(s)"
+        } else {
+            Write-Warn "No commands/ directory found — skipping"
+        }
+
         # ── Done ─────────────────────────────────────────────────────────────
         Write-Host ""
         Write-Host "✨ Done! Restart Claude Code to apply changes." -ForegroundColor Green

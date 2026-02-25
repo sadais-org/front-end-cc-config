@@ -200,6 +200,17 @@ main() {
     warn "No output-styles/ directory found — skipping"
   fi
 
+  # ── 6. commands ──────────────────────────────────────────────────────────
+  section "Installing commands"
+  if [[ -d "${repo}/commands" ]]; then
+    mkdir -p "${CLAUDE_DIR}/commands"
+    cp -r "${repo}/commands/." "${CLAUDE_DIR}/commands/"
+    local count; count=$(find "${repo}/commands" -name "*.md" | wc -l | tr -d ' ')
+    ok "Installed ${count} command(s)"
+  else
+    warn "No commands/ directory found — skipping"
+  fi
+
   # ── Done ─────────────────────────────────────────────────────────────────
   printf "\n${GREEN}${BOLD}✨ Done! Restart Claude Code to apply changes.${NC}\n"
   printf "   Config dir: ${BLUE}%s${NC}\n\n" "$CLAUDE_DIR"

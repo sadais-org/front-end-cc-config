@@ -29,6 +29,7 @@ irm https://raw.githubusercontent.com/sadais-org/front-end-cc-config/main/instal
 | `ccline/` | `~/.claude/ccline/` | 复制二进制 + 配置文件 |
 | `skills/` | `~/.claude/skills/` | 覆盖同名技能 |
 | `output-styles/` | `~/.claude/output-styles/` | 覆盖同名输出样式 |
+| `commands/` | `~/.claude/commands/` | 覆盖同名自定义命令 |
 
 **备份机制**：已有文件自动备份为 `*.bak.{YYYYMMDD_HHMMSS}`，不会丢失本地数据。
 
@@ -51,6 +52,14 @@ front-end-cc-config/
 │   └── themes/            # 状态栏主题
 ├── output-styles/         # Claude Code 输出样式定义
 │   └── engineer-professional.md
+├── commands/              # Claude Code 自定义命令（/斜杠命令）
+│   ├── commit.md
+│   ├── simplify.md
+│   ├── slides-prompt.md
+│   ├── agent-browser.md
+│   ├── obsidian-markdown.md
+│   ├── obsidian-bases.md
+│   └── obsidian-canvas.md
 └── skills/                # 团队自定义技能包
     ├── brainstorming/
     ├── browser-use/
@@ -64,6 +73,18 @@ front-end-cc-config/
 ```
 
 ---
+
+## 安装后配置
+
+安装完成后，需手动填写 `~/.claude/settings.json` 中的 API Token：
+
+```json
+{
+  "env": {
+    "ANTHROPIC_AUTH_TOKEN": "your-token-here"
+  }
+}
+```
 
 ## 更新配置
 
