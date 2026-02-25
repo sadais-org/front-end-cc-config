@@ -189,6 +189,17 @@ main() {
     warn "No skills/ directory found — skipping"
   fi
 
+  # ── 5. output-styles ─────────────────────────────────────────────────────
+  section "Installing output-styles"
+  if [[ -d "${repo}/output-styles" ]]; then
+    mkdir -p "${CLAUDE_DIR}/output-styles"
+    cp -r "${repo}/output-styles/." "${CLAUDE_DIR}/output-styles/"
+    local count; count=$(find "${repo}/output-styles" -name "*.md" | wc -l | tr -d ' ')
+    ok "Installed ${count} output style(s)"
+  else
+    warn "No output-styles/ directory found — skipping"
+  fi
+
   # ── Done ─────────────────────────────────────────────────────────────────
   printf "\n${GREEN}${BOLD}✨ Done! Restart Claude Code to apply changes.${NC}\n"
   printf "   Config dir: ${BLUE}%s${NC}\n\n" "$CLAUDE_DIR"

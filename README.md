@@ -28,6 +28,7 @@ irm https://raw.githubusercontent.com/sadais-org/front-end-cc-config/main/instal
 | `settings.json` | `~/.claude/settings.json` | 深度合并，团队配置优先 |
 | `ccline/` | `~/.claude/ccline/` | 复制二进制 + 配置文件 |
 | `skills/` | `~/.claude/skills/` | 覆盖同名技能 |
+| `output-styles/` | `~/.claude/output-styles/` | 覆盖同名输出样式 |
 
 **备份机制**：已有文件自动备份为 `*.bak.{YYYYMMDD_HHMMSS}`，不会丢失本地数据。
 
@@ -40,7 +41,7 @@ irm https://raw.githubusercontent.com/sadais-org/front-end-cc-config/main/instal
 ```
 front-end-cc-config/
 ├── CLAUDE.md              # 团队 AI 指令规范
-├── settings.json          # Claude Code 全局配置（API、权限、插件等）
+├── settings.json          # Claude Code 全局配置（API、权限、输出样式等）
 ├── install.sh             # 安装脚本（Mac / Linux / Git Bash）
 ├── install.ps1            # 安装脚本（Windows PowerShell）
 ├── ccline/                # 状态栏工具
@@ -48,19 +49,18 @@ front-end-cc-config/
 │   ├── config.toml        # ccline 主配置
 │   ├── models.toml        # 模型定义
 │   └── themes/            # 状态栏主题
-├── skills/                # 团队自定义技能包
-│   ├── brainstorming/
-│   ├── browser-use/
-│   ├── code-review-excellence/
-│   ├── context7/
-│   ├── executing-plans/
-│   ├── find-skills/
-│   ├── theme-factory/
-│   ├── using-git-worktrees/
-│   └── writing-plans/
-└── plugins/               # 插件清单（cache 已 gitignore）
-    ├── blocklist.json
-    └── installed_plugins.json
+├── output-styles/         # Claude Code 输出样式定义
+│   └── engineer-professional.md
+└── skills/                # 团队自定义技能包
+    ├── brainstorming/
+    ├── browser-use/
+    ├── code-review-excellence/
+    ├── context7/
+    ├── executing-plans/
+    ├── find-skills/
+    ├── theme-factory/
+    ├── using-git-worktrees/
+    └── writing-plans/
 ```
 
 ---
@@ -81,6 +81,5 @@ front-end-cc-config/
 配置变更后，直接 push 到 `main` 分支，团队成员重新执行安装命令即可同步。
 
 ```bash
-# 更新后通知团队执行
 curl -fsSL https://raw.githubusercontent.com/sadais-org/front-end-cc-config/main/install.sh | bash
 ```

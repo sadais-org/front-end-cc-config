@@ -199,6 +199,18 @@ function Main {
             Write-Warn "No skills/ directory found — skipping"
         }
 
+        # ── 5. output-styles ─────────────────────────────────────────────────
+        Write-Section "Installing output-styles"
+        if (Test-Path "$RepoDir\output-styles") {
+            $StylesDir = Join-Path $ClaudeDir "output-styles"
+            New-Item -ItemType Directory -Path $StylesDir -Force | Out-Null
+            Copy-Item "$RepoDir\output-styles\*" $StylesDir -Recurse -Force
+            $Count = (Get-ChildItem "$RepoDir\output-styles" -Filter "*.md").Count
+            Write-Ok "Installed $Count output style(s)"
+        } else {
+            Write-Warn "No output-styles/ directory found — skipping"
+        }
+
         # ── Done ─────────────────────────────────────────────────────────────
         Write-Host ""
         Write-Host "✨ Done! Restart Claude Code to apply changes." -ForegroundColor Green
