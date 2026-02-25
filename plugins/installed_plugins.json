@@ -1,0 +1,96 @@
+{
+  "version": 2,
+  "plugins": {
+    "everything-claude-code@everything-claude-code": [
+      {
+        "scope": "user",
+        "installPath": "/Users/fei/.claude/plugins/cache/everything-claude-code/everything-claude-code/1.0.0",
+        "version": "1.0.0",
+        "installedAt": "2026-01-26T03:19:31.722Z",
+        "lastUpdated": "2026-02-13T13:22:40.617Z",
+        "gitCommitSha": "4ec7a6b15a2911d9dd7bd25002df762c1b513ed8"
+      }
+    ],
+    "obsidian@obsidian-skills": [
+      {
+        "scope": "user",
+        "installPath": "/Users/fei/.claude/plugins/cache/obsidian-skills/obsidian/1.0.0",
+        "version": "1.0.0",
+        "installedAt": "2026-01-26T03:44:40.552Z",
+        "lastUpdated": "2026-02-04T01:59:43.207Z",
+        "gitCommitSha": "4540df83fc68a68bef27e83ae79bc4f1b4d2ea7c"
+      }
+    ],
+    "code-simplifier@claude-plugins-official": [
+      {
+        "scope": "user",
+        "installPath": "/Users/fei/.claude/plugins/cache/claude-plugins-official/code-simplifier/1.0.0",
+        "version": "1.0.0",
+        "installedAt": "2026-02-04T06:22:00.077Z",
+        "lastUpdated": "2026-02-19T03:14:00.607Z",
+        "gitCommitSha": "27d2b86d72da27c64585150857cee8472ad47abb"
+      }
+    ],
+    "jdtls-lsp@claude-plugins-official": [
+      {
+        "scope": "user",
+        "installPath": "/Users/fei/.claude/plugins/cache/claude-plugins-official/jdtls-lsp/1.0.0",
+        "version": "1.0.0",
+        "installedAt": "2026-02-05T08:37:45.750Z",
+        "lastUpdated": "2026-02-19T03:14:00.607Z",
+        "gitCommitSha": "27d2b86d72da27c64585150857cee8472ad47abb"
+      }
+    ],
+    "vercel@claude-plugins-official": [
+      {
+        "scope": "local",
+        "projectPath": "/Volumes/ext/workspace/sadais/Pi-Design",
+        "installPath": "/Users/fei/.claude/plugins/cache/claude-plugins-official/vercel/1.0.0",
+        "version": "1.0.0",
+        "installedAt": "2026-02-07T02:51:50.657Z",
+        "lastUpdated": "2026-02-19T03:30:07.415Z",
+        "gitCommitSha": "ae067751b4f42c97d13054211657275029ca8b6d"
+      }
+    ],
+    "claude-md-management@claude-plugins-official": [
+      {
+        "scope": "user",
+        "installPath": "/Users/fei/.claude/plugins/cache/claude-plugins-official/claude-md-management/1.0.0",
+        "version": "1.0.0",
+        "installedAt": "2026-02-13T03:36:19.817Z",
+        "lastUpdated": "2026-02-19T03:14:00.607Z",
+        "gitCommitSha": "2cd88e7947b7382e045666abee790c7f55f669f3"
+      }
+    ],
+    "typescript-lsp@claude-plugins-official": [
+      {
+        "scope": "user",
+        "installPath": "/Users/fei/.claude/plugins/cache/claude-plugins-official/typescript-lsp/1.0.0",
+        "version": "1.0.0",
+        "installedAt": "2026-02-13T14:08:45.432Z",
+        "lastUpdated": "2026-02-19T03:14:00.607Z",
+        "gitCommitSha": "2cd88e7947b7382e045666abee790c7f55f669f3"
+      }
+    ],
+    "ui-ux-pro-max@ui-ux-pro-max-skill": [
+      {
+        "scope": "user",
+        "installPath": "/Users/fei/.claude/plugins/cache/ui-ux-pro-max-skill/ui-ux-pro-max/2.0.1",
+        "version": "2.0.1",
+        "installedAt": "2026-02-15T13:32:18.916Z",
+        "lastUpdated": "2026-02-19T03:14:00.607Z",
+        "gitCommitSha": "6623f12b4058d09618c89cffb2de59a47c45f999"
+      }
+    ],
+    "ralph-loop@claude-plugins-official": [
+      {
+        "scope": "user",
+        "installPath": "/Users/fei/.claude/plugins/cache/claude-plugins-official/ralph-loop/2cd88e7947b7",
+        "version": "2cd88e7947b7",
+        "installedAt": "2026-02-19T03:26:02.749Z",
+        "lastUpdated": "2026-02-19T03:26:02.749Z",
+        "gitCommitSha": "2cd88e7947b7382e045666abee790c7f55f669f3"
+      }
+    ]
+  }
+}
