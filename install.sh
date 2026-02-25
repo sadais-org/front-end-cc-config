@@ -46,11 +46,14 @@ merge_json() {
 import json, sys
 
 def deep_merge(base, override):
-    """Recursively merge; override wins on key conflicts."""
+    """Recursively merge; override wins on key conflicts.
+    Exception: empty string in override does not overwrite a non-empty base value."""
     result = base.copy()
     for k, v in override.items():
         if k in result and isinstance(result[k], dict) and isinstance(v, dict):
             result[k] = deep_merge(result[k], v)
+        elif v == '' and k in result and result[k] != '':
+            pass  # keep existing non-empty value
         else:
             result[k] = v
     return result
@@ -79,9 +82,13 @@ function deepMerge(base, override) {
   const result = { ...base };
   for (const [k, v] of Object.entries(override)) {
     const isObj = (x) => x && typeof x === 'object' && !Array.isArray(x);
-    result[k] = (k in result && isObj(result[k]) && isObj(v))
-      ? deepMerge(result[k], v)
-      : v;
+    if (k in result && isObj(result[k]) && isObj(v)) {
+      result[k] = deepMerge(result[k], v);
+    } else if (v === '' && k in result && result[k] !== '') {
+      // keep existing non-empty value
+    } else {
+      result[k] = v;
+    }
   }
   return result;
 }

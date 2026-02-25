@@ -40,6 +40,8 @@ def deep_merge(base, override):
     for k, v in override.items():
         if k in result and isinstance(result[k], dict) and isinstance(v, dict):
             result[k] = deep_merge(result[k], v)
+        elif v == '' and k in result and result[k] != '':
+            pass  # keep existing non-empty value
         else:
             result[k] = v
     return result
@@ -87,7 +89,13 @@ function dm(b, o) {
   const r = { ...b };
   for (const [k, v] of Object.entries(o)) {
     const isObj = (x) => x && typeof x === 'object' && !Array.isArray(x);
-    r[k] = (k in r && isObj(r[k]) && isObj(v)) ? dm(r[k], v) : v;
+    if (k in r && isObj(r[k]) && isObj(v)) {
+      r[k] = dm(r[k], v);
+    } else if (v === '' && k in r && r[k] !== '') {
+      // keep existing non-empty value
+    } else {
+      r[k] = v;
+    }
   }
   return r;
 }
