@@ -115,6 +115,51 @@ fs.writeFileSync(of, JSON.stringify(m, null, 2) + '\n');
     Copy-Item $TeamPath $OutputPath -Force
 }
 
+# ── Inject statusLine (ccline in PATH via npm global install) ──────────────────
+function Invoke-InjectStatusLine {
+    param([string]$CfgPath)
+
+    $PyScript = @'
+import json, sys
+path = sys.argv[1]
+with open(path, encoding='utf-8') as f:
+    data = json.load(f)
+data['statusLine'] = {"type": "command", "command": "ccline", "padding": 0}
+with open(path, 'w', encoding='utf-8') as f:
+    json.dump(data, f, indent=2, ensure_ascii=False)
+    f.write('\n')
+'@
+
+    $PyFile = Join-Path $env:TEMP "sadais_statusline_$Timestamp.py"
+    $PyScript | Out-File -FilePath $PyFile -Encoding UTF8
+
+    try {
+        if (Get-Command python3 -ErrorAction SilentlyContinue) {
+            python3 $PyFile $CfgPath; return
+        }
+        if (Get-Command python -ErrorAction SilentlyContinue) {
+            python $PyFile $CfgPath; return
+        }
+    } finally {
+        Remove-Item $PyFile -ErrorAction SilentlyContinue
+    }
+
+    if (Get-Command node -ErrorAction SilentlyContinue) {
+        $JsFile = Join-Path $env:TEMP "sadais_statusline_$Timestamp.js"
+        @'
+const fs = require('fs');
+const path = process.argv[2];
+const data = JSON.parse(fs.readFileSync(path, 'utf8'));
+data.statusLine = { type: 'command', command: 'ccline', padding: 0 };
+fs.writeFileSync(path, JSON.stringify(data, null, 2) + '\n');
+'@ | Out-File -FilePath $JsFile -Encoding UTF8
+        try { node $JsFile $CfgPath } finally { Remove-Item $JsFile -ErrorAction SilentlyContinue }
+        return
+    }
+
+    Write-Warn "No python or node found — skipping statusLine injection"
+}
+
 # ── Main ──────────────────────────────────────────────────────────────────────
 function Main {
     Write-Host ""
@@ -170,6 +215,10 @@ function Main {
             Write-Ok "settings.json installed"
         }
 
+        # Inject statusLine — ccline is in PATH after npm global install
+        Invoke-InjectStatusLine $UserSettings
+        Write-Ok "statusLine configured"
+
         # ── 3. ccline ────────────────────────────────────────────────────────
         Write-Section "Installing ccline"
         $CclineDir = Join-Path $ClaudeDir "ccline"
@@ -184,15 +233,19 @@ function Main {
             Copy-Item "$RepoDir\ccline\themes" $CclineDir -Recurse -Force
         }
 
-        # Windows binary (prefer .exe, fallback to Unix binary)
-        if (Test-Path "$RepoDir\ccline\ccline.exe") {
-            Copy-Item "$RepoDir\ccline\ccline.exe" $CclineDir -Force
-            Write-Ok "ccline.exe installed"
-        } elseif (Test-Path "$RepoDir\ccline\ccline") {
-            Copy-Item "$RepoDir\ccline\ccline" $CclineDir -Force
-            Write-Warn "ccline.exe not found; installed Unix binary (works in Git Bash / WSL only)"
+        # Install ccline via npm if not already installed
+        if (Get-Command ccline -ErrorAction SilentlyContinue) {
+            Write-Ok "ccline already installed — skipping"
+        } elseif (Get-Command npm -ErrorAction SilentlyContinue) {
+            Write-Info "Installing @cometix/ccline via npm..."
+            npm install -g @cometix/ccline
+            if ($LASTEXITCODE -eq 0) {
+                Write-Ok "ccline installed via npm"
+            } else {
+                Write-Warn "npm install failed — install manually: npm install -g @cometix/ccline"
+            }
         } else {
-            Write-Warn "ccline binary not found for Windows — skipping"
+            Write-Warn "npm not found — install ccline manually: npm install -g @cometix/ccline"
         }
 
         # ── 4. skills ────────────────────────────────────────────────────────

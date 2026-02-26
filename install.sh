@@ -107,6 +107,38 @@ JSEOF
   cp "$team" "$output"
 }
 
+# ── Inject platform-specific statusLine ───────────────────────────────────────
+inject_statusline() {
+  local cfg="$1" cmd="$2"
+
+  if command -v python3 &>/dev/null; then
+    python3 - "$cfg" "$cmd" << 'PYEOF'
+import json, sys
+path, cmd = sys.argv[1], sys.argv[2]
+with open(path, encoding='utf-8') as f:
+    data = json.load(f)
+data['statusLine'] = {"type": "command", "command": cmd, "padding": 0}
+with open(path, 'w', encoding='utf-8') as f:
+    json.dump(data, f, indent=2, ensure_ascii=False)
+    f.write('\n')
+PYEOF
+    return
+  fi
+
+  if command -v node &>/dev/null; then
+    node - "$cfg" "$cmd" << 'JSEOF'
+const fs = require('fs');
+const [,, path, cmd] = process.argv;
+const data = JSON.parse(fs.readFileSync(path, 'utf8'));
+data.statusLine = { type: 'command', command: cmd, padding: 0 };
+fs.writeFileSync(path, JSON.stringify(data, null, 2) + '\n');
+JSEOF
+    return
+  fi
+
+  warn "python3 and node not found — skipping statusLine injection"
+}
+
 # ── Main ──────────────────────────────────────────────────────────────────────
 main() {
   printf "\n${BOLD}╔══════════════════════════════════════════╗${NC}\n"
@@ -158,6 +190,10 @@ main() {
     ok "settings.json installed"
   fi
 
+  # Inject statusLine — ccline is in PATH after npm global install
+  inject_statusline "$user_cfg" "ccline"
+  ok "statusLine configured"
+
   # ── 3. ccline ────────────────────────────────────────────────────────────
   section "Installing ccline"
   local ccline_dir="${CLAUDE_DIR}/ccline"
@@ -168,21 +204,16 @@ main() {
   [[ -f "${repo}/ccline/models.toml" ]] && cp "${repo}/ccline/models.toml" "$ccline_dir/"
   [[ -d "${repo}/ccline/themes"      ]] && cp -r "${repo}/ccline/themes"   "$ccline_dir/"
 
-  # Platform binary
-  local bin_name="ccline"
-  [[ "$os" == "windows" ]] && bin_name="ccline.exe"
-
-  if [[ -f "${repo}/ccline/${bin_name}" ]]; then
-    cp "${repo}/ccline/${bin_name}" "$ccline_dir/"
-    chmod +x "${ccline_dir}/${bin_name}" 2>/dev/null || true
-    ok "ccline binary installed (${bin_name})"
-  elif [[ "$os" == "windows" && -f "${repo}/ccline/ccline" ]]; then
-    # Fallback: copy the Unix binary, may work under Git Bash
-    cp "${repo}/ccline/ccline" "$ccline_dir/"
-    chmod +x "${ccline_dir}/ccline" 2>/dev/null || true
-    warn "ccline.exe not found; installed Unix binary — works in Git Bash only"
+  # Install ccline via npm if not already installed
+  if command -v ccline &>/dev/null; then
+    ok "ccline already installed — skipping"
+  elif command -v npm &>/dev/null; then
+    info "Installing @cometix/ccline via npm..."
+    npm install -g @cometix/ccline \
+      && ok "ccline installed via npm" \
+      || warn "npm install failed — install manually: npm install -g @cometix/ccline"
   else
-    warn "ccline binary not found for $os — skipping"
+    warn "npm not found — install ccline manually: npm install -g @cometix/ccline"
   fi
 
   # ── 4. skills ────────────────────────────────────────────────────────────
