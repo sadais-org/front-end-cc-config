@@ -50,6 +50,19 @@ model: claude-haiku-4-5-20251001
 #### 1.1 检测子模块结构
 
 ```bash
+# 同步主项目远程更新
+git fetch origin
+local=$(git rev-parse @)
+remote=$(git rev-parse @{u} 2>/dev/null)
+
+if [ -n "$remote" ] && [ "$local" != "$remote" ]; then
+  echo "⚠️ 主项目远程有新提交，正在同步..."
+  git pull --rebase || {
+    echo "❌ 自动同步失败，请手动处理冲突后重试"
+    exit 1
+  }
+fi
+
 # 获取所有子模块路径（包括嵌套）
 git submodule status --recursive
 
@@ -69,6 +82,21 @@ git log --oneline -10
 
 ```bash
 cd <submodule_path>
+
+# 检查并同步远程更新
+git fetch origin
+local=$(git rev-parse @)
+remote=$(git rev-parse @{u} 2>/dev/null)
+
+if [ -n "$remote" ] && [ "$local" != "$remote" ]; then
+  echo "⚠️ 检测到远程有新提交，正在同步..."
+  git pull --rebase || {
+    echo "❌ 自动同步失败，请手动处理冲突后重试"
+    exit 1
+  }
+fi
+
+# 检查状态
 git status --porcelain
 git diff HEAD --name-status
 git branch --show-current
@@ -217,10 +245,24 @@ code-simplifier report --detailed
 
 对于依赖树中的每个模块（从深到浅）：
 
-#### 7.1 切换到模块目录
+#### 7.1 切换到模块目录并同步远程
 
 ```bash
 cd <module_path>
+
+# 同步远程更新
+git fetch origin
+local=$(git rev-parse @)
+remote=$(git rev-parse @{u} 2>/dev/null)
+
+if [ -n "$remote" ] && [ "$local" != "$remote" ]; then
+  echo "⚠️ 检测到远程有新提交，正在同步..."
+  git pull --rebase || {
+    echo "❌ 同步失败，请手动处理冲突后重试"
+    cd -
+    exit 1
+  }
+fi
 ```
 
 #### 7.2 分析变更内容
@@ -353,6 +395,23 @@ cd -
 ### 步骤 8：处理主项目
 
 在所有子模块处理完成后，处理主项目：
+
+#### 8.0 同步主项目远程更新
+
+```bash
+# 同步远程更新
+git fetch origin
+local=$(git rev-parse @)
+remote=$(git rev-parse @{u} 2>/dev/null)
+
+if [ -n "$remote" ] && [ "$local" != "$remote" ]; then
+  echo "⚠️ 主项目远程有新提交，正在同步..."
+  git pull --rebase || {
+    echo "❌ 同步失败，请手动处理冲突后重试"
+    exit 1
+  }
+fi
+```
 
 #### 8.1 更新子模块引用
 
