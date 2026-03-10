@@ -95,7 +95,73 @@ node $SKILL https://blog.example.com --force-curl
 
 ## 关联页面爬取策略
 
-爬取主页后，从 `links` 字段获取关联链接，循环爬取子页面：
+关联页面爬取分三步决策，**不要默认爬取所有链接**，应根据用户问题按需爬取。
+
+### 第一步：判断是否需要关联页面
+
+先分析用户的问题意图，再决定是否需要爬取额外页面：
+
+**不需要关联页面（只爬主页即可）：**
+- 问题只涉及当前页面本身（"这个页面说了什么"、"页面标题是什么"）
+- 问题是关于某个具体内容块，主页已包含完整信息
+- 用户明确说"只看这个页面"
+
+**需要爬取关联页面：**
+- 问题涉及多个子页面的汇总（"所有文档"、"全部产品列表"、"每个章节的内容"）
+- 主页内容明显是导航/目录页，真实内容在子页面中
+- 用户问题中包含"所有"、"全部"、"每个"、"列出所有"等汇总性词语
+- 主页 `text` 字段信息不足以回答问题，但 `links` 中有明显相关链接
+
+### 第二步：过滤相关链接
+
+不要盲目爬取 `links` 中的所有链接，按以下规则筛选：
+
+**保留的链接（同时满足）：**
+- 链接文字或 URL 路径与用户问题**关键词语义相关**
+- 与主页同域（避免跳出到外部站点）
+- 排除锚点链接、登录/注销、隐私政策、社交媒体等无关链接
+
+**过滤示例：**
+```
+用户问题："查看所有 API 接口文档"
+主页 links：
+  ✅ /docs/api/users     链接文字："用户接口"
+  ✅ /docs/api/orders    链接文字："订单接口"
+  ❌ /about              链接文字："关于我们"
+  ❌ https://twitter.com 链接文字："Twitter"
+  ❌ /login              链接文字："登录"
+```
+
+**过滤代码（直接在 bash 中处理）：**
+```bash
+# 从主页结果中提取与关键词相关的链接
+python3 -c "
+import json, sys
+keyword = '关键词'   # 替换为从用户问题提取的关键词
+base_domain = 'example.com'  # 替换为主页域名
+d = json.load(open('/tmp/main.json'))
+filtered = [
+    l for l in d['links']
+    if keyword in l['text'].lower() or keyword in l['href'].lower()
+    if base_domain in l['href']
+]
+for l in filtered[:10]:  # 最多取 10 个
+    print(l['href'])
+"
+```
+
+### 第三步：控制爬取上限
+
+爬取子页面时必须设置上限，防止失控：
+
+| 场景 | 建议上限 |
+|------|---------|
+| 文档/教程类 | 最多 20 页 |
+| 产品/列表类 | 最多 10 页 |
+| 新闻/博客类 | 最多 5 页 |
+| 不确定时 | 默认 5 页，不足再追加 |
+
+完整示例流程：
 
 ```bash
 SKILL=<skill_dir>/scripts/scrape.mjs
@@ -103,16 +169,20 @@ SKILL=<skill_dir>/scripts/scrape.mjs
 # 1. 爬取主页
 node $SKILL https://example.com --output /tmp/main.json
 
-# 2. 提取链接列表
+# 2. 根据用户问题过滤链接（此处以"api"为关键词为例）
 python3 -c "
 import json
 d = json.load(open('/tmp/main.json'))
-for l in d['links'][:10]:
+filtered = [l for l in d['links'] if 'api' in l['text'].lower() or 'api' in l['href'].lower()]
+for l in filtered[:10]:
     print(l['href'])
-"
+" > /tmp/links.txt
 
-# 3. 逐个爬取子页面
-# （根据输出的链接列表，循环调用上述命令）
+# 3. 逐个爬取（最多 5 个）
+head -5 /tmp/links.txt | while read url; do
+  slug=$(echo "$url" | sed 's|[^a-zA-Z0-9]|_|g')
+  node $SKILL "$url" --output "/tmp/page_${slug}.json"
+done
 ```
 
 **SPA 内部路由**（无传统 `<a>` 链接）：优先使用 `--intercept` 发现 API 端点，再直接用 curl 调用 API 获取结构化数据，效率远高于逐页渲染。
