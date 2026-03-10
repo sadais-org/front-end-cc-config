@@ -16,8 +16,10 @@
  */
 
 import { execSync, exec } from 'child_process';
-import { writeFileSync, existsSync } from 'fs';
+import { writeFileSync, existsSync, mkdirSync } from 'fs';
 import { promisify } from 'util';
+import { tmpdir, platform } from 'os';
+import { join } from 'path';
 
 const execAsync = promisify(exec);
 
@@ -117,16 +119,70 @@ async function curlFetch(targetUrl) {
 
 // ─── 查找可用浏览器 ───────────────────────────────────────────────────────────
 function findBrowser() {
-  const candidates = [
-    '/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge',
-    '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
-    '/Applications/Chromium.app/Contents/MacOS/Chromium',
-    '/usr/bin/chromium-browser',
-    '/usr/bin/google-chrome',
-  ];
-  for (const p of candidates) {
-    if (existsSync(p)) return p;
+  const isWin = platform() === 'win32';
+
+  if (isWin) {
+    // 1. 查注册表（覆盖自定义安装位置）
+    const regKeys = [
+      'HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\msedge.exe',
+      'HKCU\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\msedge.exe',
+      'HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\chrome.exe',
+      'HKCU\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\App Paths\\chrome.exe',
+    ];
+    for (const key of regKeys) {
+      try {
+        const out = execSync(`reg query "${key}" /ve`, { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] });
+        const match = out.match(/REG_SZ\s+(.+)/);
+        if (match) {
+          const p = match[1].trim();
+          if (existsSync(p)) return p;
+        }
+      } catch {}
+    }
+
+    // 2. where 命令（PATH 中的浏览器）
+    for (const bin of ['msedge', 'chrome', 'chromium']) {
+      try {
+        const p = execSync(`where ${bin}`, { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] }).split('\n')[0].trim();
+        if (p && existsSync(p)) return p;
+      } catch {}
+    }
+
+    // 3. 回退：标准安装路径
+    const pf = process.env.ProgramFiles || '';
+    const pf86 = process.env['ProgramFiles(x86)'] || '';
+    const localAppData = process.env.LOCALAPPDATA || '';
+    for (const p of [
+      join(pf86, 'Microsoft\\Edge\\Application\\msedge.exe'),
+      join(pf, 'Microsoft\\Edge\\Application\\msedge.exe'),
+      join(pf, 'Google\\Chrome\\Application\\chrome.exe'),
+      join(pf86, 'Google\\Chrome\\Application\\chrome.exe'),
+      join(localAppData, 'Google\\Chrome\\Application\\chrome.exe'),
+      join(localAppData, 'Chromium\\Application\\chrome.exe'),
+    ]) {
+      if (p && existsSync(p)) return p;
+    }
+  } else {
+    // 1. which 命令（PATH 中的浏览器，覆盖非标准安装）
+    for (const bin of ['google-chrome', 'chromium-browser', 'chromium']) {
+      try {
+        const p = execSync(`which ${bin}`, { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] }).trim();
+        if (p && existsSync(p)) return p;
+      } catch {}
+    }
+
+    // 2. 回退：标准安装路径
+    for (const p of [
+      '/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge',
+      '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+      '/Applications/Chromium.app/Contents/MacOS/Chromium',
+      '/usr/bin/chromium-browser',
+      '/usr/bin/google-chrome',
+    ]) {
+      if (existsSync(p)) return p;
+    }
   }
+
   return null;
 }
 
@@ -140,9 +196,10 @@ async function puppeteerFetch(targetUrl) {
     puppeteer = (await import('puppeteer-core')).default;
   } catch {
     try {
-      puppeteer = (await import('file:///tmp/web-scraper-deps/node_modules/puppeteer-core/index.js')).default;
+      const pkgPath = join(PUPPETEER_DIR, 'node_modules', 'puppeteer-core', 'index.js');
+      puppeteer = (await import(`file://${pkgPath}`)).default;
     } catch {
-      throw new Error('puppeteer-core 未安装，请先运行：\n  cd /tmp/web-scraper-deps && npm install puppeteer-core');
+      throw new Error(`puppeteer-core 未安装，请先运行：\n  cd "${PUPPETEER_DIR}" && npm install puppeteer-core`);
     }
   }
 
@@ -152,10 +209,14 @@ async function puppeteerFetch(targetUrl) {
   }
   console.error(`[web-scraper] 使用浏览器：${browserPath}`);
 
+  const isWin = platform() === 'win32';
   const browser = await puppeteer.launch({
     executablePath: browserPath,
-    headless: 'shell',
-    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+    headless: true,
+    args: [
+      '--no-sandbox',
+      ...(!isWin ? ['--disable-setuid-sandbox', '--disable-dev-shm-usage'] : []),
+    ],
     timeout: 60000,
   });
 
@@ -202,17 +263,19 @@ async function puppeteerFetch(targetUrl) {
 }
 
 // ─── 安装 puppeteer-core（若未安装）─────────────────────────────────────────
+const PUPPETEER_DIR = join(tmpdir(), 'web-scraper-deps');
+
 async function ensurePuppeteer() {
   try {
     await import('puppeteer-core');
     return true;
   } catch {
-    const tmpDir = '/tmp/web-scraper-deps';
-    if (existsSync(`${tmpDir}/node_modules/puppeteer-core`)) {
+    if (existsSync(join(PUPPETEER_DIR, 'node_modules', 'puppeteer-core'))) {
       return true;
     }
     console.error('[web-scraper] 正在安装 puppeteer-core...');
-    execSync(`mkdir -p ${tmpDir} && cd ${tmpDir} && npm install puppeteer-core --silent 2>/dev/null`, { stdio: 'inherit' });
+    mkdirSync(PUPPETEER_DIR, { recursive: true });
+    execSync('npm install puppeteer-core --silent', { cwd: PUPPETEER_DIR, stdio: 'inherit' });
     return true;
   }
 }
