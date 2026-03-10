@@ -13,7 +13,6 @@ set -euo pipefail
 REPO_URL="https://github.com/sadais-org/front-end-cc-config.git"
 BRANCH="main"
 CLAUDE_DIR="${HOME}/.claude"
-TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 
 # ── Colors ────────────────────────────────────────────────────────────────────
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
@@ -167,7 +166,8 @@ main() {
   section "Installing CLAUDE.md"
   local claude_md="${CLAUDE_DIR}/CLAUDE.md"
   if [[ -f "$claude_md" ]]; then
-    local bak="${claude_md}.bak.${TIMESTAMP}"
+    local bak="${claude_md}.bak"
+    rm -f "$bak" "$bak".*
     cp "$claude_md" "$bak"
     warn "Backed up existing CLAUDE.md → $(basename "$bak")"
   fi
@@ -180,7 +180,8 @@ main() {
   local team_cfg="${repo}/settings.json"
 
   if [[ -f "$user_cfg" ]]; then
-    local bak="${user_cfg}.bak.${TIMESTAMP}"
+    local bak="${user_cfg}.bak"
+    rm -f "$bak" "$bak".*
     cp "$user_cfg" "$bak"
     warn "Backed up existing settings.json → $(basename "$bak")"
     merge_json "$user_cfg" "$team_cfg" "$user_cfg"

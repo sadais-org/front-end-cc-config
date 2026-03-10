@@ -192,9 +192,11 @@ function Main {
         Write-Section "Installing CLAUDE.md"
         $ClaudeMdPath = Join-Path $ClaudeDir "CLAUDE.md"
         if (Test-Path $ClaudeMdPath) {
-            $Bak = Join-Path $ClaudeDir "CLAUDE.md.bak.$Timestamp"
+            $Bak = Join-Path $ClaudeDir "CLAUDE.md.bak"
+            Remove-Item $Bak -ErrorAction SilentlyContinue
+            Remove-Item "$Bak.*" -ErrorAction SilentlyContinue
             Copy-Item $ClaudeMdPath $Bak
-            Write-Warn "Backed up existing CLAUDE.md → CLAUDE.md.bak.$Timestamp"
+            Write-Warn "Backed up existing CLAUDE.md → CLAUDE.md.bak"
         }
         Copy-Item "$RepoDir\CLAUDE.md" $ClaudeMdPath -Force
         Write-Ok "CLAUDE.md installed"
@@ -205,9 +207,11 @@ function Main {
         $TeamSettings = "$RepoDir\settings.json"
 
         if (Test-Path $UserSettings) {
-            $Bak = "$UserSettings.bak.$Timestamp"
+            $Bak = "$UserSettings.bak"
+            Remove-Item $Bak -ErrorAction SilentlyContinue
+            Remove-Item "$Bak.*" -ErrorAction SilentlyContinue
             Copy-Item $UserSettings $Bak
-            Write-Warn "Backed up existing settings.json → settings.json.bak.$Timestamp"
+            Write-Warn "Backed up existing settings.json → settings.json.bak"
             Invoke-MergeJson $UserSettings $TeamSettings $UserSettings
             Write-Ok "settings.json merged (team keys win on conflicts)"
         } else {
