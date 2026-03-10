@@ -139,7 +139,11 @@ async function puppeteerFetch(targetUrl) {
   try {
     puppeteer = (await import('puppeteer-core')).default;
   } catch {
-    throw new Error('puppeteer-core 未安装，请先运行：\n  cd /tmp && npm install puppeteer-core');
+    try {
+      puppeteer = (await import('file:///tmp/web-scraper-deps/node_modules/puppeteer-core/index.js')).default;
+    } catch {
+      throw new Error('puppeteer-core 未安装，请先运行：\n  cd /tmp/web-scraper-deps && npm install puppeteer-core');
+    }
   }
 
   const browserPath = findBrowser();
@@ -203,12 +207,12 @@ async function ensurePuppeteer() {
     await import('puppeteer-core');
     return true;
   } catch {
-    console.error('[web-scraper] 正在安装 puppeteer-core...');
     const tmpDir = '/tmp/web-scraper-deps';
+    if (existsSync(`${tmpDir}/node_modules/puppeteer-core`)) {
+      return true;
+    }
+    console.error('[web-scraper] 正在安装 puppeteer-core...');
     execSync(`mkdir -p ${tmpDir} && cd ${tmpDir} && npm install puppeteer-core --silent 2>/dev/null`, { stdio: 'inherit' });
-    // 添加到 NODE_PATH
-    process.env.NODE_PATH = `${tmpDir}/node_modules:${process.env.NODE_PATH || ''}`;
-    require('module').Module._initPaths();
     return true;
   }
 }
