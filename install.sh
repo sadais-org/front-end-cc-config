@@ -41,7 +41,7 @@ merge_json() {
 
   if command -v python3 &>/dev/null; then
     info "Merging with python3..."
-    python3 - "$existing" "$team" "$output" << 'PYEOF'
+    if python3 - "$existing" "$team" "$output" << 'PYEOF'; then
 import json, sys
 
 def deep_merge(base, override):
@@ -68,7 +68,8 @@ with open(sys.argv[3], 'w', encoding='utf-8') as f:
     json.dump(merged, f, indent=2, ensure_ascii=False)
     f.write('\n')
 PYEOF
-    return
+      return
+    fi
   fi
 
   if command -v node &>/dev/null; then
@@ -111,7 +112,7 @@ inject_statusline() {
   local cfg="$1" cmd="$2"
 
   if command -v python3 &>/dev/null; then
-    python3 - "$cfg" "$cmd" << 'PYEOF'
+    if python3 - "$cfg" "$cmd" << 'PYEOF'; then
 import json, sys
 path, cmd = sys.argv[1], sys.argv[2]
 with open(path, encoding='utf-8') as f:
@@ -121,7 +122,8 @@ with open(path, 'w', encoding='utf-8') as f:
     json.dump(data, f, indent=2, ensure_ascii=False)
     f.write('\n')
 PYEOF
-    return
+      return
+    fi
   fi
 
   if command -v node &>/dev/null; then

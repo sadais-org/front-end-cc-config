@@ -66,13 +66,13 @@ with open(sys.argv[3], 'w', encoding='utf-8') as f:
         if (Get-Command python3 -ErrorAction SilentlyContinue) {
             Write-Info "Merging with python3..."
             python3 $PyFile $ExistingPath $TeamPath $OutputPath
-            return
+            if ($LASTEXITCODE -eq 0) { return }
         }
         # python (Windows often registers as 'python')
         if (Get-Command python -ErrorAction SilentlyContinue) {
             Write-Info "Merging with python..."
             python $PyFile $ExistingPath $TeamPath $OutputPath
-            return
+            if ($LASTEXITCODE -eq 0) { return }
         }
     } finally {
         Remove-Item $PyFile -ErrorAction SilentlyContinue
@@ -135,10 +135,12 @@ with open(path, 'w', encoding='utf-8') as f:
 
     try {
         if (Get-Command python3 -ErrorAction SilentlyContinue) {
-            python3 $PyFile $CfgPath; return
+            python3 $PyFile $CfgPath
+            if ($LASTEXITCODE -eq 0) { return }
         }
         if (Get-Command python -ErrorAction SilentlyContinue) {
-            python $PyFile $CfgPath; return
+            python $PyFile $CfgPath
+            if ($LASTEXITCODE -eq 0) { return }
         }
     } finally {
         Remove-Item $PyFile -ErrorAction SilentlyContinue
