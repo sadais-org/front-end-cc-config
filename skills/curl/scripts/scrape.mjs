@@ -20,6 +20,7 @@ import { writeFileSync, existsSync, mkdirSync } from 'fs';
 import { promisify } from 'util';
 import { tmpdir, platform } from 'os';
 import { join } from 'path';
+import { createRequire } from 'module';
 
 const execAsync = promisify(exec);
 
@@ -191,13 +192,14 @@ async function puppeteerFetch(targetUrl) {
   console.error('[web-scraper] 模式：puppeteer（SPA 页面）');
 
   // 动态 import puppeteer（避免未安装时报错）
+  // 使用 createRequire 从临时目录加载，兼容 Mac/Windows 及现代 puppeteer-core 包结构
   let puppeteer;
   try {
     puppeteer = (await import('puppeteer-core')).default;
   } catch {
     try {
-      const pkgPath = join(PUPPETEER_DIR, 'node_modules', 'puppeteer-core', 'index.js');
-      puppeteer = (await import(`file://${pkgPath}`)).default;
+      const req = createRequire(join(PUPPETEER_DIR, 'dummy.js'));
+      puppeteer = req('puppeteer-core');
     } catch {
       throw new Error(`puppeteer-core 未安装，请先运行：\n  cd "${PUPPETEER_DIR}" && npm install puppeteer-core`);
     }
@@ -266,18 +268,28 @@ async function puppeteerFetch(targetUrl) {
 const PUPPETEER_DIR = join(tmpdir(), 'web-scraper-deps');
 
 async function ensurePuppeteer() {
+  // 1. 优先尝试全局 import
   try {
     await import('puppeteer-core');
     return true;
-  } catch {
-    if (existsSync(join(PUPPETEER_DIR, 'node_modules', 'puppeteer-core'))) {
+  } catch {}
+
+  // 2. 目录存在时实际验证能否加载（防止目录残留但包损坏的情况）
+  if (existsSync(join(PUPPETEER_DIR, 'node_modules', 'puppeteer-core'))) {
+    try {
+      const req = createRequire(join(PUPPETEER_DIR, 'dummy.js'));
+      req('puppeteer-core');
       return true;
+    } catch {
+      // 目录存在但加载失败，继续执行重新安装
     }
-    console.error('[web-scraper] 正在安装 puppeteer-core...');
-    mkdirSync(PUPPETEER_DIR, { recursive: true });
-    execSync('npm install puppeteer-core --silent', { cwd: PUPPETEER_DIR, stdio: 'inherit' });
-    return true;
   }
+
+  // 3. 安装到临时目录
+  console.error('[web-scraper] 正在安装 puppeteer-core...');
+  mkdirSync(PUPPETEER_DIR, { recursive: true });
+  execSync('npm install puppeteer-core --silent', { cwd: PUPPETEER_DIR, stdio: 'inherit' });
+  return true;
 }
 
 // ─── 主流程 ──────────────────────────────────────────────────────────────────
