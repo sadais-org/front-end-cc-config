@@ -466,7 +466,15 @@ git commit -m "🔗 chore: 更新子模块引用"
 按照步骤 7.3-7.5 处理
 
 **情况 3：两者都有**
-先提交代码变更，再提交子模块更新
+⚠️ **必须合并到同一个提交中**，不可拆分为两次提交。
+
+```bash
+git add path/to/submodule1 src/changed-file.js
+git commit -m "✨ feat(scope): 功能描述（含子模块更新）"
+```
+
+> **常见漏洞**：只 `git add` 了主项目代码文件，忘记把子模块路径也加入暂存区，导致子模块指针遗漏在外，需要额外补一次提交。
+> 执行 `git add` 前务必用 `git status` 确认所有 `modified: path/to/submodule (new commits)` 的子模块都已包含在内。
 
 #### 8.4 推送主项目
 
