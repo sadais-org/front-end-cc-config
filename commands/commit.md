@@ -1,7 +1,7 @@
 ---
-allowed-tools: Bash(git *), Bash(cd *)
+allowed-tools: Bash(git *), Bash(cd *), AskUserQuestion, Skill
 description: 创建 git 提交（含代码质量检查，支持嵌套子模块）
-model: claude-haiku-4-5-20251001
+model: claude-sonnet-4-6
 ---
 
 # Git Commit 命令（智能提交）
@@ -9,7 +9,7 @@ model: claude-haiku-4-5-20251001
 ## 命令说明
 
 这是一个增强版的 git commit 命令，在提交前可以：
-1. ❓ **可选的代码质量检查**（code-simplifier，询问用户是否需要）
+1. ❓ **可选的代码质量检查**（simplify skill，询问用户是否需要）
 2. 🔄 **支持循环优化**（直到用户满意）
 3. 📝 **生成规范的提交消息**（约定式提交 + emoji）
 4. 🚀 **自动推送到远程**
@@ -23,6 +23,7 @@ model: claude-haiku-4-5-20251001
 /commit
   ↓
 【准备阶段】
+  ├─ 0. 检测已有暂存文件
   ├─ 1. 递归收集所有变更（主项目 + 所有子模块）
   ├─ 2. 构建提交依赖树（子模块 → 父模块）
   └─ 3. 询问：是否需要代码质量检查？
@@ -30,26 +31,49 @@ model: claude-haiku-4-5-20251001
         └─ 否 → 直接跳到第二阶段
   ↓
 【第一阶段：代码质量检查】（可选，可循环）
-  ├─ 4. code-simplifier 分析代码
+  ├─ 4. simplify skill 分析代码
   ├─ 5. 有优化建议？
   │     ├─ 是 → 询问用户 → 处理 → 回到步骤 4
   │     └─ 否 → 进入第二阶段
   ↓
 【第二阶段：Git 提交流程】
-  ├─ 6. 按依赖顺序处理（从最深层子模块开始）
-  ├─ 7. 每个模块：
-  │     ├─ 7.1 ⚠️ 【必须】同步远程 (git fetch + pull)
-  │     ├─ 7.2 分析变更
-  │     ├─ 7.3 拆分提交
-  │     ├─ 7.4 生成消息
-  │     ├─ 7.5 执行提交
-  │     └─ 7.6 推送
-  └─ 8. 最后处理主项目（同样先同步远程）
+  ├─ 6. 按依赖顺序逐个处理每个模块（从最深层子模块开始）：
+  │     ├─ 6.1 ⚠️ 【必须】同步远程 (git fetch + pull)
+  │     ├─ 6.2 分析变更
+  │     ├─ 6.3 拆分提交（详见附录 A）
+  │     ├─ 6.4 生成消息
+  │     ├─ 6.5 执行提交
+  │     └─ 6.6 推送
+  └─ 7. 最后处理主项目（同样先同步远程）
 ```
 
 ---
 
 ## 准备阶段
+
+### 步骤 0：检测已有暂存文件
+
+在开始任何操作前，检测工作区是否已有暂存内容：
+
+```bash
+git diff --cached --name-only
+```
+
+如果暂存区非空，使用 AskUserQuestion 询问用户：
+
+```
+⚠️ 检测到已有暂存文件：
+  [列出文件列表]
+
+如何处理？
+1. 将这些文件纳入本次 /commit 流程统一处理
+2. 先执行 git reset HEAD（取消暂存）再由 /commit 重新分析
+3. 中止，我来手动处理
+```
+
+根据用户选择决定是否继续。
+
+---
 
 ### 步骤 1：递归收集所有变更
 
@@ -83,6 +107,9 @@ git log --oneline -10
 ```
 
 #### 1.2 递归检查每个模块的状态
+
+> **说明：** 此处对每个子模块执行一次远程同步。步骤 6.1 会在实际提交前再同步一次，
+> 属于有意设计的双重保障——准备阶段获取初始状态，提交前确保无新增远程提交。
 
 对每个检测到的子模块执行：
 
@@ -161,7 +188,7 @@ cd -
 问题：是否需要在提交前进行代码质量检查？
 
 选项：
-1. 是，使用 code-simplifier 检查代码质量
+1. 是，使用 simplify skill 检查代码质量
 2. 否，直接进入提交流程
 ```
 
@@ -173,15 +200,14 @@ cd -
 
 ## 第一阶段：代码质量检查（可选）
 
-### 步骤 4：执行 code-simplifier 分析
+### 步骤 4：执行代码质量分析
 
 **重要：** 此阶段必须保护用户的修改内容，不能重置工作区。
 
-使用 Bash tool 调用 code-simplifier：
+使用 Skill 工具调用 `simplify` skill，对所有修改的文件进行分析：
 
-```bash
-# 分析所有修改的文件
-code-simplifier analyze <file1> <file2> ...
+```
+使用 Skill("simplify") 对变更文件列表执行分析
 ```
 
 **输出：**
@@ -193,14 +219,14 @@ code-simplifier analyze <file1> <file2> ...
 
 ### 步骤 5：处理优化建议
 
-如果 code-simplifier 有优化建议：
+如果 simplify 有优化建议：
 
 #### 5.1 询问用户
 
 使用 AskUserQuestion 工具：
 
 ```
-问题：code-simplifier 发现了以下优化建议：
+问题：simplify 发现了以下优化建议：
 
 [列出所有建议]
 
@@ -210,38 +236,18 @@ code-simplifier analyze <file1> <file2> ...
 1. 应用所有优化建议
 2. 选择性应用（逐个确认）
 3. 跳过优化，直接提交
-4. 查看详细分析报告
 ```
 
 #### 5.2 根据用户选择执行
 
 **选项 1：应用所有优化**
-```bash
-code-simplifier apply --all
-```
-然后回到步骤 4（重新分析）
+使用 Skill("simplify") 应用全部建议，然后回到步骤 4（重新分析）
 
 **选项 2：选择性应用**
 逐个询问用户是否应用每个建议，然后回到步骤 4
 
 **选项 3：跳过优化**
-直接进入第二阶段
-
-**选项 4：查看详细报告**
-```bash
-code-simplifier report --detailed
-```
-然后重新询问（回到 5.1）
-
----
-
-### 步骤 6：循环优化
-
-重复步骤 4-5，直到：
-- code-simplifier 没有更多建议
-- 用户选择"跳过优化"
-
-然后进入第二阶段。
+直接进入第二阶段。没有更多建议时同样直接进入第二阶段。
 
 ---
 
@@ -255,11 +261,11 @@ code-simplifier report --detailed
 - 如果远程有新提交，必须先 `git pull --rebase`
 - 违反此规则将导致推送失败和不必要的冲突
 
-### 步骤 7：按依赖顺序处理每个模块
+### 步骤 6：按依赖顺序处理每个模块
 
 对于依赖树中的每个模块（从深到浅）：
 
-#### 7.1 【必须】切换到模块目录并同步远程（在任何提交操作之前）
+#### 6.1 【必须】切换到模块目录并同步远程（在任何提交操作之前）
 
 ⚠️ **IMPORTANT: 此步骤必须在 git add/commit 之前执行**
 
@@ -283,9 +289,7 @@ fi
 
 ✅ **检查点：确认已完成远程同步，才能继续下一步**
 
-#### 7.2 分析变更内容
-
-⚠️ **只有在完成步骤 7.1 后才能执行此步骤**
+#### 6.2 分析变更内容
 
 ```bash
 # 查看详细变更
@@ -295,39 +299,17 @@ git diff HEAD
 git status --porcelain
 ```
 
-#### 7.3 拆分提交（按类型）
+#### 6.3 拆分提交（按语义）
 
-根据约定式提交规范，将变更分类：
+根据约定式提交规范将变更分类，拆分依据是**变更的语义目的**，详见附录 A.2。
 
-**提交类型优先级：**
-1. `fix` - 修复 bug
-2. `feat` - 新功能
-3. `perf` - 性能优化
-4. `refactor` - 重构
-5. `style` - 代码格式
-6. `docs` - 文档
-7. `test` - 测试
-8. `chore` - 构建/工具
+**提交类型：**`fix` / `feat` / `perf` / `refactor` / `style` / `docs` / `test` / `chore`
 
-**拆分规则：**
-- 每个类型单独提交
-- 同类型的多个文件可以合并提交
-- 不同类型必须分开提交
+**规则：**
+- 每个语义单独提交，同语义的多个文件可合并
+- 同一文件含多个语义时，使用 `git add -p` 拆分（详见附录 A.2）
 
-**示例：**
-```
-变更文件：
-- src/utils.js (重构)
-- src/api.js (新功能)
-- README.md (文档)
-
-拆分为 3 个提交：
-1. refactor: 重构 utils 模块
-2. feat: 添加新的 API 接口
-3. docs: 更新 README 文档
-```
-
-#### 7.4 生成提交消息
+#### 6.4 生成提交消息
 
 对每个提交，生成符合约定式提交的消息：
 
@@ -370,41 +352,44 @@ Closes #123
 4. 包含必要的上下文信息
 5. 如果有关联的 issue，添加 footer
 
-#### 7.5 执行提交
+#### 6.5 执行提交
 
 ```bash
-# 添加文件
-git add <files_for_this_commit>
-
-# 提交
-git commit -m "<generated_message>"
+# 检查暂存区不为空，防止空提交
+if git diff --cached --quiet; then
+  echo "⚠️ 暂存区为空，跳过此次提交"
+else
+  git commit -m "<generated_message>"
+fi
 ```
 
-**验证：**
-- 确认提交成功
-- 检查提交历史
-
-#### 7.6 推送到远程
+#### 6.6 推送到远程
 
 ```bash
-# 获取远程分支
-remote_branch=$(git rev-parse --abbrev-ref --symbolic-full-name @{u} 2>/dev/null)
-
-if [ -n "$remote_branch" ]; then
-  # 推送到跟踪的远程分支
-  git push
+# 检查是否有远程仓库
+if ! git remote | grep -q .; then
+  echo "ℹ️ 未配置远程仓库，跳过推送"
 else
-  # 首次推送，设置上游分支
-  current_branch=$(git branch --show-current)
-  git push -u origin "$current_branch"
+  # 获取远程分支
+  remote_branch=$(git rev-parse --abbrev-ref --symbolic-full-name @{u} 2>/dev/null)
+
+  if [ -n "$remote_branch" ]; then
+    # 推送到跟踪的远程分支
+    git push
+  else
+    # 首次推送，设置上游分支
+    current_branch=$(git branch --show-current)
+    git push -u origin "$current_branch"
+  fi
 fi
 ```
 
 **错误处理：**
-- 如果推送失败（如需要 pull），询问用户如何处理
-- 如果没有远程仓库，跳过推送步骤
+- 如果推送被拒绝（rejected），询问用户如何处理
+- 如果因权限不足被拒绝（remote: Permission denied / protected branch），提示用户检查分支保护规则或权限设置，不自动强推
+- 如果 pre-commit hook 或 commit-msg hook 失败，输出 hook 的报错信息，询问用户是否修正后重试
 
-#### 7.7 返回上级目录
+#### 6.7 返回上级目录
 
 ```bash
 cd -
@@ -412,11 +397,11 @@ cd -
 
 ---
 
-### 步骤 8：处理主项目
+### 步骤 7：处理主项目
 
 在所有子模块处理完成后，处理主项目：
 
-#### 8.0 同步主项目远程更新
+#### 7.0 同步主项目远程更新
 
 ```bash
 # 同步远程更新
@@ -433,7 +418,7 @@ if [ -n "$remote" ] && [ "$local" != "$remote" ]; then
 fi
 ```
 
-#### 8.1 更新子模块引用
+#### 7.1 分析主项目变更
 
 如果子模块有新提交，主项目会检测到子模块指针变更：
 
@@ -441,11 +426,7 @@ fi
 git status
 # 输出示例：
 # modified:   path/to/submodule (new commits)
-```
 
-#### 8.2 分析主项目变更
-
-```bash
 git diff HEAD
 ```
 
@@ -454,7 +435,7 @@ git diff HEAD
 2. 主项目代码变更
 3. 两者都有
 
-#### 8.3 拆分提交
+#### 7.2 拆分提交
 
 **情况 1：仅子模块指针更新**
 ```bash
@@ -463,7 +444,7 @@ git commit -m "🔗 chore: 更新子模块引用"
 ```
 
 **情况 2：主项目代码变更**
-按照步骤 7.3-7.5 处理
+按照步骤 6.3-6.5 处理
 
 **情况 3：两者都有**
 ⚠️ **必须合并到同一个提交中**，不可拆分为两次提交。
@@ -476,17 +457,15 @@ git commit -m "✨ feat(scope): 功能描述（含子模块更新）"
 > **常见漏洞**：只 `git add` 了主项目代码文件，忘记把子模块路径也加入暂存区，导致子模块指针遗漏在外，需要额外补一次提交。
 > 执行 `git add` 前务必用 `git status` 确认所有 `modified: path/to/submodule (new commits)` 的子模块都已包含在内。
 
-#### 8.4 推送主项目
+#### 7.3 推送主项目
 
-```bash
-git push
-```
+按照步骤 6.6 的逻辑推送（含远程检测、首次推送设 upstream、权限拒绝处理）。
 
 ---
 
 ## 完成阶段
 
-### 步骤 9：输出提交摘要
+### 步骤 8：输出提交摘要
 
 生成完整的提交报告：
 
@@ -511,22 +490,7 @@ git push
 
 ## 错误处理
 
-### 1. 合并冲突
-
-如果在推送时遇到冲突：
-
-```bash
-if git push 2>&1 | grep -q 'rejected'; then
-  echo "⚠️ 推送被拒绝，远程分支有新提交"
-  echo "建议操作："
-  echo "1. git pull --rebase"
-  echo "2. 解决冲突"
-  echo "3. 重新运行 /commit"
-  exit 1
-fi
-```
-
-### 2. 未跟踪的文件
+### 1. 未跟踪的文件
 
 如果有未跟踪的文件：
 
@@ -535,19 +499,26 @@ untracked=$(git ls-files --others --exclude-standard)
 if [ -n "$untracked" ]; then
   echo "⚠️ 检测到未跟踪的文件："
   echo "$untracked"
-  ask_user_add_or_ignore
 fi
 ```
 
-### 3. 子模块状态异常
+使用 AskUserQuestion 询问用户：
+```
+选项：
+1. 将这些文件加入本次提交
+2. 忽略（不提交，也不加入 .gitignore）
+3. 加入 .gitignore
+```
+
+### 2. 子模块状态异常
 
 **未初始化的子模块：**
 ```bash
 if git submodule status | grep -q '^-'; then
   echo "⚠️ 检测到未初始化的子模块"
-  ask_user_init_submodules
 fi
 ```
+使用 AskUserQuestion 询问用户是否执行 `git submodule update --init --recursive`。
 
 **子模块 detached HEAD：**
 ```bash
@@ -555,25 +526,81 @@ cd "$submodule"
 if ! git symbolic-ref -q HEAD; then
   echo "⚠️ 子模块 $submodule 处于 detached HEAD 状态"
   echo "建议先切换到分支再提交"
-  ask_user_continue_or_abort
 fi
 cd -
 ```
+使用 AskUserQuestion 询问用户是继续提交还是先切换分支。
 
-**推送冲突：**
-```bash
-if git push 2>&1 | grep -q 'rejected'; then
-  echo "⚠️ 推送被拒绝，需要先 pull"
-  ask_user_pull_and_retry
-fi
-```
-
-### 4. 其他约束
+### 3. 其他约束
 - 不添加共同作者页脚
 - 提交消息必须是中文
 - 遵循约定式提交格式
 - 保护用户修改内容（代码质量检查时不能重置用户的修改）
 - **选择性提交时，只需 `git add <目标文件>` 后直接提交**，未暂存的文件不会进入提交，**严禁**用 `git restore` / `git checkout` / `git reset --hard` 等破坏性命令来"排除"文件，否则会丢失未提交的改动
+
+---
+
+### 附录：提交拆分规则（语义分类）
+
+#### A.1 提交前先输出提交计划供用户确认
+
+在执行任何 `git add` / `git commit` 前，必须先将拟定的提交计划输出给用户：
+
+```
+📋 拟提交计划：
+
+提交 1：🐛 fix(sales-follow-up): 修复详情页空值显示问题
+  - src/views/sales-follow-up/detail.vue
+
+提交 2：✨ feat(sales-follow-up): 新增签到信息展示及地图预览
+  - src/typings/modules/sales-follow-up.ts
+  - src/views/sales-follow-up/detail.vue
+  - src/lowcode-console（子模块）
+  - src/vue3-common（子模块）
+
+提交 3：🔧 chore(deps): 新增 pdfjs-dist 依赖
+  - package.json
+
+请确认或修改后再执行提交。
+```
+
+**用户明确确认后才能开始执行提交。**
+
+#### A.2 按语义分类拆分，而非按文件类型
+
+拆分的依据是**变更的语义目的**，而非文件类型或文件名：
+
+- **功能新增**（feat）：新接口、新组件、新字段、新交互
+- **缺陷修复**（fix）：修复 bug、空值兜底、异常处理
+- **依赖变更**（chore/deps）：新增/升级/移除 npm 包
+- **重构**（refactor）：不改变外部行为的代码结构调整
+- **样式/格式**（style）：纯 UI 样式、代码格式化
+
+**同一文件可能涉及多个语义**，此时需拆分为多次提交。使用 `git add -p <file>` 进行交互式 patch 暂存，只选择属于当前提交语义的 hunk，避免整个文件被一次性暂存：
+
+```bash
+# 同一文件拆分示例：detail.vue 同时含 fix 和 feat
+git add -p src/views/detail.vue   # 交互式选择属于 fix 的 hunk
+git commit -m "🐛 fix(detail): 修复空值显示问题"
+
+git add src/views/detail.vue      # 暂存剩余的 feat hunk
+git commit -m "✨ feat(detail): 新增签到地址字段"
+```
+
+#### A.3 子模块指针与主项目业务提交合并
+
+子模块指针变更（`new commits`）**必须与同批次最核心的业务提交合并**，不单独作为 `🔗 chore: 更新子模块引用` 提交，除非主项目本身没有任何代码变更。
+
+```
+✅ 正确：
+  git add src/typings/... src/views/... src/lowcode-console src/vue3-common
+  git commit -m "✨ feat(sales-follow-up): 新增签到信息展示（含子模块更新）"
+
+❌ 错误：
+  # 先提交业务代码，再单独提交子模块指针
+  git commit -m "✨ feat: 新增签到信息"
+  git commit -m "🔗 chore: 更新子模块引用"
+```
 
 ---
 
