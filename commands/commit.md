@@ -111,30 +111,50 @@ git log --oneline -10
 > **说明：** 此处对每个子模块执行一次远程同步。步骤 6.1 会在实际提交前再同步一次，
 > 属于有意设计的双重保障——准备阶段获取初始状态，提交前确保无新增远程提交。
 
-对每个检测到的子模块执行：
+⚠️ **CRITICAL: 必须对每个子模块执行 fetch 检查远程更新**
+
+从 `git submodule status --recursive` 的输出中解析所有子模块路径，对每个子模块执行：
 
 ```bash
-cd <submodule_path>
+# 解析子模块路径示例
+# git submodule status --recursive 输出格式：
+#  4b58655ef7c311b5151c3e710eb6838c1eef7bcb src/lowcode-console (heads/master)
+#  45bb1f2edbdf2065424950438aaa211db4e70397 src/vue3-common (heads/dev)
 
-# ⚠️ CRITICAL: 检查并同步远程更新
-git fetch origin
-local=$(git rev-parse @)
-remote=$(git rev-parse @{u} 2>/dev/null)
+# 提取路径（第二列）
+submodule_paths=$(git submodule status --recursive | awk '{print $2}')
 
-if [ -n "$remote" ] && [ "$local" != "$remote" ]; then
-  echo "⚠️ 检测到远程有新提交，正在同步..."
-  git pull --rebase || {
-    echo "❌ 自动同步失败，请手动处理冲突后重试"
-    exit 1
-  }
-fi
+# 对每个子模块执行检查
+for submodule_path in $submodule_paths; do
+  cd "$submodule_path"
 
-# 检查状态
-git status --porcelain
-git diff HEAD --name-status
-git branch --show-current
-cd -
+  # ⚠️ CRITICAL: 检查并同步远程更新
+  git fetch origin
+  local=$(git rev-parse @)
+  remote=$(git rev-parse @{u} 2>/dev/null)
+
+  if [ -n "$remote" ] && [ "$local" != "$remote" ]; then
+    echo "⚠️ 子模块 $submodule_path 远程有新提交，正在同步..."
+    git pull --rebase || {
+      echo "❌ 子模块 $submodule_path 同步失败，请手动处理冲突后重试"
+      cd - > /dev/null
+      exit 1
+    }
+  fi
+
+  # 检查状态
+  git status --porcelain
+  git diff HEAD --name-status
+  git branch --show-current
+
+  cd - > /dev/null
+done
 ```
+
+**重要提示：**
+- 不能只执行 `git submodule status`，这只显示当前状态，不会检测远程更新
+- 必须进入每个子模块目录执行 `git fetch` 才能发现远程新提交
+- 如果子模块远程有更新但本地未同步，会导致主项目检测不到子模块指针变更
 
 #### 1.3 构建变更摘要
 
