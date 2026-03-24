@@ -1,7 +1,6 @@
 ---
 allowed-tools: Bash(git *), Bash(cd *), AskUserQuestion, Skill
 description: 创建 git 提交（含代码质量检查，支持嵌套子模块）
-model: claude-sonnet-4-6
 ---
 
 # Git Commit 命令（智能提交）
