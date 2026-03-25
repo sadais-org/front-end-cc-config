@@ -1,7 +1,5 @@
 {
   "env": {
-    "ANTHROPIC_AUTH_TOKEN": "",
-    "ANTHROPIC_BASE_URL": "https://claude2.sssaicode.com/api",
     "API_TIMEOUT_MS": "3000000",
     "CLAUDE_CODE_ATTRIBUTION_HEADER": "0",
     "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1"
