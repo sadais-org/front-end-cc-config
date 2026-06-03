@@ -2,13 +2,15 @@
   "env": {
     "API_TIMEOUT_MS": "3000000",
     "CLAUDE_CODE_ATTRIBUTION_HEADER": "0",
-    "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1"
+    "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
+    "ENABLE_TOOL_SEARCH": "true"
   },
   "permissions": {
     "allow": [
       "mcp__pencil"
     ]
   },
+  "skipWebFetchPreflight": true,
   "skipDangerousModePermissionPrompt": true,
   "includeCoAuthoredBy": false
 }
